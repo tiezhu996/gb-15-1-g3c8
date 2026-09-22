@@ -22,7 +22,10 @@ type PaperRepository interface {
 	CountByStatus(ctx context.Context) (map[string]int64, error)
 	CountBySubject(ctx context.Context) ([]model.SubjectCount, error)
 	CountCreatedByDay(ctx context.Context, days int) ([]model.DayCount, error)
-	CountAll(ctx context.Context) (int64, error)
+	// CountAll 统计全部论文；excludeWithdrawn 为 true 时排除已撤稿终态论文。
+	CountAll(ctx context.Context, excludeWithdrawn bool) (int64, error)
+	// CountWithdrawn 统计已撤稿终态论文数量（单独展示，不计入有效投稿口径）。
+	CountWithdrawn(ctx context.Context) (int64, error)
 }
 
 type paperRepository struct {
@@ -42,7 +45,7 @@ func (r *paperRepository) Create(ctx context.Context, paper *model.Paper) error 
 }
 
 func (r *paperRepository) Update(ctx context.Context, paper *model.Paper) error {
-	if err := r.db.WithContext(ctx).Omit("Submitter", "Reviews", "Revisions").Save(paper).Error; err != nil {
+	if err := r.db.WithContext(ctx).Omit("Submitter", "Reviews", "Revisions", "Withdrawal").Save(paper).Error; err != nil {
 		return fmt.Errorf("update paper: %w", err)
 	}
 	return nil
@@ -80,6 +83,9 @@ func (r *paperRepository) FindByIDWithDetail(ctx context.Context, id uint) (*mod
 		Preload("Revisions", func(db *gorm.DB) *gorm.DB {
 			return db.Preload("SubmittedBy")
 		}).
+		Preload("Withdrawal", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("Applicant").Preload("ProcessedBy").Order("created_at DESC")
+		}).
 		First(&p, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("find paper detail %d: %w", id, ErrNotFound)
@@ -109,10 +115,19 @@ func (r *paperRepository) List(ctx context.Context, filter model.PaperFilter, pa
 		return nil, 0, fmt.Errorf("count papers: %w", err)
 	}
 	var items []model.Paper
-	if err := q.Preload("Submitter").Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&items).Error; err != nil {
+	if err := q.Preload("Submitter").
+		Preload("Withdrawal", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at DESC")
+		}).
+		Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&items).Error; err != nil {
 		return nil, 0, fmt.Errorf("list papers: %w", err)
 	}
 	return items, total, nil
+}
+
+// activeOnly 统计口径：已撤稿论文从论文库与统计排除。
+func activeOnly(db *gorm.DB) *gorm.DB {
+	return db.Where("status <> ?", "withdrawn")
 }
 
 func (r *paperRepository) CountByStatus(ctx context.Context) (map[string]int64, error) {
@@ -121,7 +136,7 @@ func (r *paperRepository) CountByStatus(ctx context.Context) (map[string]int64, 
 		Count  int64
 	}
 	var rows []row
-	if err := r.db.WithContext(ctx).Model(&model.Paper{}).
+	if err := activeOnly(r.db.WithContext(ctx).Model(&model.Paper{})).
 		Select("status, count(*) as count").Group("status").Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("count papers by status: %w", err)
 	}
@@ -134,7 +149,7 @@ func (r *paperRepository) CountByStatus(ctx context.Context) (map[string]int64, 
 
 func (r *paperRepository) CountBySubject(ctx context.Context) ([]model.SubjectCount, error) {
 	var rows []model.SubjectCount
-	if err := r.db.WithContext(ctx).Model(&model.Paper{}).
+	if err := activeOnly(r.db.WithContext(ctx).Model(&model.Paper{})).
 		Select("subject, count(*) as count").Group("subject").Order("count DESC").Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("count papers by subject: %w", err)
 	}
@@ -144,7 +159,7 @@ func (r *paperRepository) CountBySubject(ctx context.Context) ([]model.SubjectCo
 func (r *paperRepository) CountCreatedByDay(ctx context.Context, days int) ([]model.DayCount, error) {
 	var rows []model.DayCount
 	start := time.Now().AddDate(0, 0, -(days - 1))
-	if err := r.db.WithContext(ctx).Model(&model.Paper{}).
+	if err := activeOnly(r.db.WithContext(ctx).Model(&model.Paper{})).
 		Select("to_char(created_at, 'YYYY-MM-DD') as day, count(*) as count").
 		Where("created_at >= ?", start).
 		Group("day").Order("day").Scan(&rows).Error; err != nil {
@@ -153,10 +168,23 @@ func (r *paperRepository) CountCreatedByDay(ctx context.Context, days int) ([]mo
 	return rows, nil
 }
 
-func (r *paperRepository) CountAll(ctx context.Context) (int64, error) {
+func (r *paperRepository) CountAll(ctx context.Context, excludeWithdrawn bool) (int64, error) {
 	var n int64
-	if err := r.db.WithContext(ctx).Model(&model.Paper{}).Count(&n).Error; err != nil {
+	q := r.db.WithContext(ctx).Model(&model.Paper{})
+	if excludeWithdrawn {
+		q = activeOnly(q)
+	}
+	if err := q.Count(&n).Error; err != nil {
 		return 0, fmt.Errorf("count all papers: %w", err)
+	}
+	return n, nil
+}
+
+func (r *paperRepository) CountWithdrawn(ctx context.Context) (int64, error) {
+	var n int64
+	if err := r.db.WithContext(ctx).Model(&model.Paper{}).
+		Where("status = ?", "withdrawn").Count(&n).Error; err != nil {
+		return 0, fmt.Errorf("count withdrawn papers: %w", err)
 	}
 	return n, nil
 }

@@ -129,7 +129,8 @@ func (f *fakeReviewRepo) Create(ctx context.Context, r *model.Review) error {
 }
 
 func (f *fakeReviewRepo) Update(ctx context.Context, r *model.Review) error {
-	f.reviews[r.ID] = r
+	cp := *r
+	f.reviews[r.ID] = &cp
 	return nil
 }
 
@@ -238,24 +239,124 @@ func (f *fakeAuditRepo) Create(ctx context.Context, l *model.AuditLog) error {
 	return nil
 }
 
+type fakeWithdrawalRepo struct {
+	repository.WithdrawalRepository
+	withdrawals []*model.Withdrawal
+	reviewsRef  *fakeReviewRepo
+	nextID      uint
+}
+
+func newFakeWithdrawalRepo() *fakeWithdrawalRepo {
+	return &fakeWithdrawalRepo{}
+}
+
+func (f *fakeWithdrawalRepo) Create(ctx context.Context, w *model.Withdrawal) error {
+	for _, existing := range f.withdrawals {
+		if existing.PaperID == w.PaperID && existing.Status == "pending" {
+			return fmt.Errorf("duplicate pending withdrawal for paper %d", w.PaperID)
+		}
+	}
+	f.nextID++
+	w.ID = f.nextID
+	f.withdrawals = append(f.withdrawals, w)
+	return nil
+}
+
+func (f *fakeWithdrawalRepo) Update(ctx context.Context, w *model.Withdrawal) error {
+	for i, existing := range f.withdrawals {
+		if existing.ID == w.ID {
+			f.withdrawals[i] = w
+			return nil
+		}
+	}
+	return repository.ErrNotFound
+}
+
+func (f *fakeWithdrawalRepo) FindByID(ctx context.Context, id uint) (*model.Withdrawal, error) {
+	for _, w := range f.withdrawals {
+		if w.ID == id {
+			return w, nil
+		}
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (f *fakeWithdrawalRepo) FindByIDForUpdate(ctx context.Context, id uint) (*model.Withdrawal, error) {
+	return f.FindByID(ctx, id)
+}
+
+func (f *fakeWithdrawalRepo) FindPendingByPaper(ctx context.Context, paperID uint) (*model.Withdrawal, error) {
+	for _, w := range f.withdrawals {
+		if w.PaperID == paperID && w.Status == "pending" {
+			return w, nil
+		}
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (f *fakeWithdrawalRepo) FindLatestByPaper(ctx context.Context, paperID uint) (*model.Withdrawal, error) {
+	var latest *model.Withdrawal
+	for _, w := range f.withdrawals {
+		if w.PaperID == paperID && (latest == nil || w.CreatedAt.After(latest.CreatedAt)) {
+			latest = w
+		}
+	}
+	if latest == nil {
+		return nil, repository.ErrNotFound
+	}
+	return latest, nil
+}
+
+func (f *fakeWithdrawalRepo) List(ctx context.Context, filter model.WithdrawalFilter, page, size int) ([]model.Withdrawal, int64, error) {
+	var items []model.Withdrawal
+	for _, w := range f.withdrawals {
+		if filter.Status != "" && w.Status != filter.Status {
+			continue
+		}
+		if filter.PaperID > 0 && w.PaperID != filter.PaperID {
+			continue
+		}
+		items = append(items, *w)
+	}
+	return items, int64(len(items)), nil
+}
+
+func (f *fakeWithdrawalRepo) CloseOpenReviews(ctx context.Context, paperID uint, closedNote string) (int64, error) {
+	var n int64
+	for _, r := range f.reviewsRef.reviews {
+		if r.PaperID == paperID && (r.Status == "invited" || r.Status == "accepted") {
+			r.Status = "closed"
+			if r.Comments == "" {
+				r.Comments = closedNote
+			}
+			n++
+		}
+	}
+	return n, nil
+}
+
 type fakeStore struct {
-	users      *fakeUserRepo
-	papers     *fakePaperRepo
-	reviews    *fakeReviewRepo
-	revisions  *fakeRevisionRepo
-	plagiarism *fakePlagiarismRepo
-	audit      *fakeAuditRepo
+	users       *fakeUserRepo
+	papers      *fakePaperRepo
+	reviews     *fakeReviewRepo
+	revisions   *fakeRevisionRepo
+	plagiarism  *fakePlagiarismRepo
+	withdrawals *fakeWithdrawalRepo
+	audit       *fakeAuditRepo
 }
 
 func newFakeStore() *fakeStore {
-	return &fakeStore{
-		users:      newFakeUserRepo(),
-		papers:     newFakePaperRepo(),
-		reviews:    newFakeReviewRepo(),
-		revisions:  newFakeRevisionRepo(),
-		plagiarism: newFakePlagiarismRepo(),
-		audit:      newFakeAuditRepo(),
+	s := &fakeStore{
+		users:       newFakeUserRepo(),
+		papers:      newFakePaperRepo(),
+		reviews:     newFakeReviewRepo(),
+		revisions:   newFakeRevisionRepo(),
+		plagiarism:  newFakePlagiarismRepo(),
+		withdrawals: newFakeWithdrawalRepo(),
+		audit:       newFakeAuditRepo(),
 	}
+	s.withdrawals.reviewsRef = s.reviews
+	return s
 }
 
 func (f *fakeStore) Transaction(ctx context.Context, fn func(repository.Store) error) error {
@@ -270,6 +371,9 @@ func (f *fakeStore) RevisionRepository() repository.RevisionRepository {
 }
 func (f *fakeStore) PlagiarismRepository() repository.PlagiarismRepository {
 	return f.plagiarism
+}
+func (f *fakeStore) WithdrawalRepository() repository.WithdrawalRepository {
+	return f.withdrawals
 }
 func (f *fakeStore) AuditLogRepository() repository.AuditLogRepository {
 	return f.audit

@@ -23,6 +23,8 @@ func TestPaperRepositoryListByStatus(t *testing.T) {
 			AddRow(1, "Accepted Paper", "accepted", 7))
 	mock.ExpectQuery(`SELECT .* FROM "users"`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "username"}).AddRow(7, "author"))
+	mock.ExpectQuery(`SELECT .* FROM "withdrawals"`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "paper_id", "status"}))
 
 	items, total, err := repo.List(context.Background(), model.PaperFilter{Status: "accepted"}, 1, 10)
 	if err != nil {

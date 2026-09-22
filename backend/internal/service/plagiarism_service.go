@@ -79,7 +79,7 @@ func (s *PlagiarismService) GetByPaper(ctx context.Context, paperID uint) (*mode
 	return check, nil
 }
 
-// Rerun 重新执行查重。
+// Rerun 重新执行查重（撤稿冻结期与已撤稿终态仅可查看，不可重跑推进）。
 func (s *PlagiarismService) Rerun(ctx context.Context, paperID uint) (*model.PlagiarismCheck, error) {
 	paper, err := s.store.PaperRepository().FindByID(ctx, paperID)
 	if err != nil {
@@ -88,6 +88,16 @@ func (s *PlagiarismService) Rerun(ctx context.Context, paperID uint) (*model.Pla
 				fmt.Sprintf("查重重跑失败：论文 id=%d 不存在", paperID), nil)
 		}
 		return nil, util.NewAppError(constants.ErrInternal, "查重重跑失败：系统内部错误", err)
+	}
+	if paper.Status == constants.PaperStatusWithdrawn {
+		return nil, util.NewAppError(constants.ErrPaperStatusNotAllowed,
+			fmt.Sprintf("查重重跑失败：论文《%s》已撤稿，终态不可变更", paper.Title), nil)
+	}
+	if _, err := s.store.WithdrawalRepository().FindPendingByPaper(ctx, paperID); err == nil {
+		return nil, util.NewAppError(constants.ErrPaperStatusNotAllowed,
+			fmt.Sprintf("查重重跑失败：论文《%s》存在待处理撤稿申请，流程已暂停，待编辑部处理后再试", paper.Title), nil)
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return nil, util.NewAppError(constants.ErrInternal, "查重重跑失败：撤稿状态校验系统内部错误", err)
 	}
 	return s.RunCheck(ctx, paper)
 }

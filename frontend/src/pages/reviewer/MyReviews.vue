@@ -28,21 +28,24 @@
       <el-table-column label="截止日期" width="150">
         <template #default="{ row }">{{ formatTime(row.due_date) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="220" fixed="right">
         <template #default="{ row }">
-          <template v-if="row.status === 'invited'">
+          <el-tag v-if="isFrozen(row)" type="warning" effect="plain" size="small">
+            {{ row.paper?.status === 'withdrawn' ? '论文已撤稿' : '撤稿处理中，已暂停' }}
+          </el-tag>
+          <template v-else-if="row.status === 'invited'">
             <el-button link type="success" @click="respond(row, true)">接受</el-button>
             <el-button link type="danger" @click="respond(row, false)">拒绝</el-button>
           </template>
           <el-button
-            v-if="row.status === 'accepted'"
+            v-else-if="row.status === 'accepted'"
             link
             type="primary"
             @click="router.push(`/reviews/${row.id}`)"
           >
             提交审稿
           </el-button>
-          <el-button v-if="row.status === 'completed'" link type="primary" @click="router.push(`/reviews/${row.id}`)">
+          <el-button v-else-if="row.status === 'completed' || row.status === 'declined' || row.status === 'closed'" link type="primary" @click="router.push(`/reviews/${row.id}`)">
             查看
           </el-button>
         </template>
@@ -57,7 +60,7 @@
       v-model:page-size="pagination.size.value"
       :total="pagination.total.value"
       layout="total, prev, pager, next"
-      @current-change="() => pagination.load({ status: status.value })"
+      @current-change="() => pagination.load({ status })"
       class="pager"
     />
   </el-card>
@@ -78,6 +81,15 @@ import { formatTime, subjectText } from '../../utils/format'
 const router = useRouter()
 const status = ref('')
 const pagination = usePagination<ReviewItem>((params) => listMyReviews({ ...params, status: status.value }))
+
+// 撤稿待处理或论文已撤稿：审稿记录可查看，但接受/拒绝/提交不可推进。
+function isFrozen(row: ReviewItem): boolean {
+  return (
+    row.paper?.status === 'withdrawn' ||
+    row.status === 'closed' ||
+    row.paper?.withdrawal?.status === 'pending'
+  )
+}
 
 function onStatusChange() {
   pagination.load({ status: status.value })

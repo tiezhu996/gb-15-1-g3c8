@@ -35,13 +35,14 @@ docker compose down -v --remove-orphans
 
 ## 主要功能
 
-1. **作者投稿管理**：注册登录后创建投稿，上传 PDF/Word 论文文件，填写标题、摘要、关键词、学科分类、作者与单位，跟踪投稿状态（已提交→初审中→外审中→修改中→已录用/已拒稿）。
+1. **作者投稿管理**：注册登录后创建投稿，上传 PDF/Word 论文文件，填写标题、摘要、关键词、学科分类、作者与单位，跟踪投稿状态（已提交→初审中→外审中→修改中→已录用/已拒稿/已撤稿）。
 2. **编辑部初审**：编辑检查格式与选题，通过后分配给审稿人，不通过退回作者并附理由。
 3. **同行评审管理**：审稿人接受/拒绝邀请，接受后按截止日期提交评审意见（录用/小修后录用/大修后重审/拒稿），支持匿名双盲（给编辑的保密意见仅编辑可见）。
 4. **修稿与反馈**：作者按审稿意见修改并重新提交，上传逐条回复的修改说明，多轮迭代。
 5. **查重检测**：投稿自动触发查重，展示重复率与重复段落标注，超过 30% 自动退回。
-6. **论文库与检索**：已录用论文进入论文库，支持按标题/摘要/关键词/学科检索。
-7. **数据统计**：编辑统计面板——投稿量趋势、学科分布、平均审稿周期、录用率、审稿人工作量排名。
+6. **论文库与检索**：已录用论文进入论文库，支持按标题/摘要/关键词/学科检索（已撤稿论文自动排除）。
+7. **数据统计**：编辑统计面板——投稿量趋势、学科分布、平均审稿周期、录用率、审稿人工作量排名（已撤稿不计入统计）。
+8. **论文撤稿申请与终态保护**：作者可对本人未录用论文发起一次撤稿；外审/修稿阶段须填写替代处理说明。待处理期间审稿、修稿、查重记录可查看但不能推进；重复或并发申请只保留一条。编辑驳回后恢复原流程，批准后论文进入「已撤稿」终态——从论文库与统计排除，未完成审稿一并关闭，撤回前记录原样保留。
 
 ## 本地开发（备选）
 
@@ -150,7 +151,11 @@ gb-15-1/
 | POST | /papers/:id/initial-review | 初审通过/退回 | 编辑/管理员 |
 | POST | /papers/:id/final-decision | 终审录用/拒稿 | 编辑/管理员 |
 | POST | /papers/:id/revise | 修稿重投 | 作者本人 |
-| GET | /library/papers?keyword=&subject= | 论文库检索 | 登录 |
+| POST | /papers/:id/withdrawal | 发起撤稿申请（外审/修稿须填替代处理说明） | 作者本人 |
+| GET | /papers/:id/withdrawal | 论文最近一次撤稿申请 | 登录 |
+| GET | /withdrawals?status=pending | 撤稿申请队列 | 编辑/管理员 |
+| POST | /withdrawals/:id/decision | 批准/驳回撤稿申请 | 编辑/管理员 |
+| GET | /library/papers?keyword=&subject= | 论文库检索（已撤稿自动排除） | 登录 |
 | GET | /papers/:id/revisions | 修稿记录 | 登录 |
 
 ### 审稿
@@ -234,18 +239,26 @@ curl -sS http://localhost:3009/healthz
 - 前端 constants：`frontend/src/constants/index.ts`（ROLE_MAP）
 - 前端页面：`frontend/src/pages/layout/MainLayout.vue`（菜单过滤）、`frontend/src/router/index.ts`（roles 守卫）、`frontend/src/pages/auth/Register.vue`
 
-### 2. 论文状态 PaperStatus（submitted / initial_review / external_review / revision / accepted / rejected）
+### 2. 论文状态 PaperStatus（submitted / initial_review / external_review / revision / accepted / rejected / withdrawn）
 
-- 后端 model：`backend/internal/model/paper.go`
-- 后端 constants：`backend/internal/constants/paper_status.go`
-- 后端 DTO：`backend/internal/dto/paper_dto.go`（PaperQuery oneof 校验）
-- 后端 service 状态机：`backend/internal/service/paper_service.go`（Create/InitialReview/FinalDecision/Revise）、`backend/internal/service/plagiarism_service.go`（自动退回）、`backend/internal/service/review_service.go`（接受/提交推进状态）
-- 后端 handler 校验：`backend/internal/handler/paper_handler.go`
-- 后端 repository：`backend/internal/repository/paper_repository.go`（按状态统计）
-- 后端 formatters：`backend/internal/util/formatters.go`（FormatPaperStatus）
-- 后端日志模板：`backend/internal/constants/log_templates.go`（LogPaperCreateOK、LogInitialReviewOK 等）
-- 前端 constants：`frontend/src/constants/index.ts`（PAPER_STATUS_MAP / PAPER_STATUS_ORDER）
-- 前端组件/页面：`frontend/src/components/StatusBadge.vue`、`frontend/src/components/PaperStatusSteps.vue`、`frontend/src/pages/author/PaperList.vue`、`frontend/src/pages/editor/InitialReview.vue`
+- 后端 model：`backend/internal/model/paper.go`、`backend/internal/model/withdrawal.go`
+- 后端 constants：`backend/internal/constants/paper_status.go`、`backend/internal/constants/withdrawal_status.go`
+- 后端 DTO：`backend/internal/dto/paper_dto.go`（PaperQuery oneof 校验）、`backend/internal/dto/withdrawal_dto.go`
+- 后端 service 状态机：`backend/internal/service/paper_service.go`（Create/InitialReview/FinalDecision/Revise）、`backend/internal/service/plagiarism_service.go`（自动退回）、`backend/internal/service/review_service.go`（接受/提交推进状态）、`backend/internal/service/withdrawal_service.go`（申请/批准/驳回、终态保护）
+- 后端 handler 校验：`backend/internal/handler/paper_handler.go`、`backend/internal/handler/withdrawal_handler.go`
+- 后端 repository：`backend/internal/repository/paper_repository.go`（按状态统计、已撤稿排除）、`backend/internal/repository/withdrawal_repository.go`
+- 后端 formatters：`backend/internal/util/formatters.go`（FormatPaperStatus / FormatWithdrawalStatus）
+- 后端日志模板：`backend/internal/constants/log_templates.go`（LogPaperCreateOK、LogInitialReviewOK、LogWithdrawalApply 等）
+- 前端 constants：`frontend/src/constants/index.ts`（PAPER_STATUS_MAP / PAPER_STATUS_ORDER / WITHDRAWAL_STATUS_MAP）
+- 前端组件/页面：`frontend/src/components/StatusBadge.vue`、`frontend/src/components/PaperStatusSteps.vue`、`frontend/src/components/WithdrawalPanel.vue`、`frontend/src/pages/author/PaperList.vue`、`frontend/src/pages/editor/InitialReview.vue`、`frontend/src/pages/editor/WithdrawalQueue.vue`
+
+### 2b. 撤稿申请状态 WithdrawalStatus（pending / approved / rejected）与审稿关闭态 ReviewStatus.closed
+
+- 后端 model：`backend/internal/model/withdrawal.go`（部分唯一索引：每篇论文至多一条 pending）
+- 后端 constants：`backend/internal/constants/withdrawal_status.go`、`backend/internal/constants/review_status.go`
+- 后端 service：`backend/internal/service/withdrawal_service.go`（GuardPaperFlow 流程守卫）
+- 后端 handler/router：`backend/internal/handler/withdrawal_handler.go`、`backend/internal/router/withdrawal.go`
+- 前端 API/页面：`frontend/src/api/withdrawal.ts`、`frontend/src/pages/editor/WithdrawalQueue.vue`、`frontend/src/components/WithdrawalPanel.vue`
 
 ### 3. 审稿状态 ReviewStatus（invited / accepted / declined / completed）
 

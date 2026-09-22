@@ -35,6 +35,7 @@ func New(engine *gin.Engine, h *handler.Handlers, auth *middleware.AuthMiddlewar
 	RegisterReviewRoutes(protected, h.Review)
 	RegisterRevisionRoutes(protected, h.Revision)
 	RegisterPlagiarismRoutes(protected, h.Plagiarism)
+	RegisterWithdrawalRoutes(protected, h.Withdrawal)
 	RegisterAuditRoutes(protected, h.Audit)
 	RegisterStatisticsRoutes(protected, h.Statistics)
 	return r

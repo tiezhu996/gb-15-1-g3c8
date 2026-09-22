@@ -47,7 +47,11 @@ func (s *ReviewService) ListByPaper(ctx context.Context, paperID uint) ([]model.
 // Assign 编辑追加分配审稿人（与初审分配共用 ReviewRepository.Create）。
 func (s *ReviewService) Assign(ctx context.Context, paperID, reviewerID uint) (*model.Review, error) {
 	err := s.store.Transaction(ctx, func(tx repository.Store) error {
-		if _, err := tx.PaperRepository().FindByIDForUpdate(ctx, paperID); err != nil {
+		paper, err := tx.PaperRepository().FindByIDForUpdate(ctx, paperID)
+		if err != nil {
+			return err
+		}
+		if err := GuardPaperFlow(ctx, tx, paper, "分配审稿人"); err != nil {
 			return err
 		}
 		reviewer, err := tx.UserRepository().FindByID(ctx, reviewerID)
@@ -108,25 +112,27 @@ func (s *ReviewService) Respond(ctx context.Context, reviewID, reviewerID uint, 
 				fmt.Sprintf("审稿回应失败：审稿 id=%d 当前状态 %s 不可回应",
 					reviewID, util.FormatReviewStatus(review.Status)), nil)
 		}
-		if accept {
-			review.Status = constants.ReviewStatusAccepted
-		} else {
-			review.Status = constants.ReviewStatusDeclined
+		// 撤稿冻结期/已撤稿：审稿记录可查看，但接受与拒绝均不可推进。
+		paper, err := tx.PaperRepository().FindByIDForUpdate(ctx, review.PaperID)
+		if err != nil {
+			return err
 		}
-		if err := tx.ReviewRepository().Update(ctx, review); err != nil {
+		if err := GuardPaperFlow(ctx, tx, paper, "审稿回应"); err != nil {
 			return err
 		}
 		if accept {
-			paper, err := tx.PaperRepository().FindByIDForUpdate(ctx, review.PaperID)
-			if err != nil {
-				return err
-			}
+			review.Status = constants.ReviewStatusAccepted
 			if paper.Status == constants.PaperStatusInitialReview {
 				paper.Status = constants.PaperStatusExternalReview
 				if err := tx.PaperRepository().Update(ctx, paper); err != nil {
 					return err
 				}
 			}
+		} else {
+			review.Status = constants.ReviewStatusDeclined
+		}
+		if err := tx.ReviewRepository().Update(ctx, review); err != nil {
+			return err
 		}
 		return nil
 	})
@@ -157,6 +163,14 @@ func (s *ReviewService) Submit(ctx context.Context, reviewID, reviewerID uint, r
 				fmt.Sprintf("提交审稿失败：审稿 id=%d 当前状态 %s 不可提交",
 					reviewID, util.FormatReviewStatus(review.Status)), nil)
 		}
+		// 撤稿冻结期/已撤稿：先阻断，避免写入审稿结果后回滚不彻底。
+		paper, err := tx.PaperRepository().FindByIDForUpdate(ctx, review.PaperID)
+		if err != nil {
+			return err
+		}
+		if err := GuardPaperFlow(ctx, tx, paper, "提交审稿"); err != nil {
+			return err
+		}
 		review.Decision = req.Decision
 		review.Comments = req.Comments
 		review.ConfidentialComments = req.ConfidentialComments
@@ -164,10 +178,6 @@ func (s *ReviewService) Submit(ctx context.Context, reviewID, reviewerID uint, r
 		now := timeNow()
 		review.CompletedAt = &now
 		if err := tx.ReviewRepository().Update(ctx, review); err != nil {
-			return err
-		}
-		paper, err := tx.PaperRepository().FindByIDForUpdate(ctx, review.PaperID)
-		if err != nil {
 			return err
 		}
 		switch req.Decision {

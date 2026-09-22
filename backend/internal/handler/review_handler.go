@@ -119,4 +119,3 @@ func (h *ReviewHandler) wrapError(c *gin.Context, err error) {
 	}
 	util.Fail(c, http.StatusInternalServerError, constants.ErrInternal, "系统内部错误："+err.Error())
 }
-

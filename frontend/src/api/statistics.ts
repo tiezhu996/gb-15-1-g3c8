@@ -8,6 +8,7 @@ export interface Overview {
   revision: number
   accepted: number
   rejected: number
+  withdrawn: number
   acceptance_rate: number
   avg_review_days: number
 }

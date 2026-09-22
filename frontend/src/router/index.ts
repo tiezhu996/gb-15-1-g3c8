@@ -52,6 +52,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '编辑部初审', roles: ['editor', 'admin'] }
       },
       {
+        path: 'editor/withdrawals',
+        name: 'editor-withdrawals',
+        component: () => import('../pages/editor/WithdrawalQueue.vue'),
+        meta: { title: '撤稿申请', roles: ['editor', 'admin'] }
+      },
+      {
         path: 'editor/papers/:id',
         name: 'editor-paper-detail',
         component: () => import('../pages/editor/PaperManage.vue'),

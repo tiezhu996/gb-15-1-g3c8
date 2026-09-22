@@ -10,12 +10,16 @@
         <PaperInfoCard :paper="paper" />
       </div>
 
+      <div v-if="paper.withdrawal" class="mt-16">
+        <WithdrawalPanel :withdrawal="paper.withdrawal" border />
+      </div>
+
       <el-card shadow="never" class="mt-16">
         <template #header>
           <div class="row-between">
             <span>审稿人分配</span>
             <el-button
-              v-if="['initial_review', 'external_review', 'revision'].includes(paper.status)"
+              v-if="canManageFlow"
               type="primary"
               size="small"
               @click="assignVisible = true"
@@ -59,27 +63,48 @@
           </el-descriptions-item>
           <el-descriptions-item label="检测时间">{{ formatTime(plagiarism.checked_at) }}</el-descriptions-item>
         </el-descriptions>
-        <el-button class="mt-16" type="primary" plain size="small" @click="rerunPlagiarism">
+        <el-button
+          class="mt-16"
+          type="primary"
+          plain
+          size="small"
+          :disabled="!canManageFlow"
+          @click="rerunPlagiarism"
+        >
           重跑查重
         </el-button>
       </el-card>
 
       <el-card shadow="never" class="mt-16">
         <template #header>终审决定</template>
+        <el-alert
+          v-if="paper.status === 'withdrawn'"
+          type="info"
+          :closable="false"
+          title="论文已撤稿（终态），不可再做终审或流程变更"
+          class="mb"
+        />
+        <el-alert
+          v-else-if="pendingWithdrawal"
+          type="warning"
+          :closable="false"
+          title="该论文存在待处理撤稿申请，请先在「撤稿申请」队列中处理，终审流程已暂停"
+          class="mb"
+        />
         <el-form label-width="90px" style="max-width: 640px">
           <el-form-item label="决定">
-            <el-radio-group v-model="decision">
+            <el-radio-group v-model="decision" :disabled="!canManageFlow">
               <el-radio value="accepted">录用</el-radio>
               <el-radio value="rejected">拒稿</el-radio>
             </el-radio-group>
           </el-form-item>
           <el-form-item label="终审意见">
-            <el-input v-model="comment" type="textarea" :rows="3" placeholder="选填" />
+            <el-input v-model="comment" type="textarea" :rows="3" :disabled="!canManageFlow" placeholder="选填" />
           </el-form-item>
           <el-form-item>
             <el-button
               type="primary"
-              :disabled="!['initial_review', 'external_review', 'revision'].includes(paper.status)"
+              :disabled="!canManageFlow"
               :loading="decisionLoading"
               @click="submitDecision"
             >
@@ -103,7 +128,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { assignReviewer } from '../../api/review'
@@ -112,6 +137,7 @@ import type { Paper, PlagiarismResult } from '../../api/types'
 import EmptyState from '../../components/EmptyState.vue'
 import PaperInfoCard from '../../components/PaperInfoCard.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
+import WithdrawalPanel from '../../components/WithdrawalPanel.vue'
 import { formatPercent, formatTime } from '../../utils/format'
 
 const route = useRoute()
@@ -126,6 +152,12 @@ const reviewers = ref<Array<{ id: number; real_name: string; username: string }>
 const decision = ref('accepted')
 const comment = ref('')
 const assignReviewerId = ref(0)
+
+const pendingWithdrawal = computed(() => paper.value?.withdrawal?.status === 'pending')
+const flowStatuses = ['initial_review', 'external_review', 'revision']
+const canManageFlow = computed(
+  () => !!paper.value && flowStatuses.includes(paper.value.status) && !pendingWithdrawal.value
+)
 
 async function load() {
   const id = route.params.id as string

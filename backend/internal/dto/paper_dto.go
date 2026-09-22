@@ -47,7 +47,7 @@ type AssignReviewerRequest struct {
 
 // PaperQuery 论文列表查询参数。
 type PaperQuery struct {
-	Status  string `form:"status" binding:"omitempty,oneof=submitted initial_review external_review revision accepted rejected"`
+	Status  string `form:"status" binding:"omitempty,oneof=submitted initial_review external_review revision accepted rejected withdrawn"`
 	Keyword string `form:"keyword"`
 	Subject string `form:"subject"`
 	Page    int    `form:"page" binding:"omitempty,min=1"`

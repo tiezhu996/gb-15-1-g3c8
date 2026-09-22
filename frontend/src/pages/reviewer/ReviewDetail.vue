@@ -11,7 +11,21 @@
       </div>
       <el-card shadow="never" class="mt-16" style="max-width: 840px">
         <template #header>提交评审意见</template>
-        <template v-if="review.status === 'accepted'">
+        <el-alert
+          v-if="paper?.status === 'withdrawn' || review.status === 'closed'"
+          type="info"
+          :closable="false"
+          title="论文已撤稿，该审稿任务已关闭，记录保留可查看但不可再提交意见"
+          class="mb"
+        />
+        <el-alert
+          v-else-if="paper?.withdrawal?.status === 'pending'"
+          type="warning"
+          :closable="false"
+          title="该论文存在待处理撤稿申请，审稿流程已暂停，处理完成前不可提交意见（记录仍可查看）"
+          class="mb"
+        />
+        <template v-else-if="review.status === 'accepted'">
           <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
             <el-form-item label="评审等级" prop="decision">
               <el-select v-model="form.decision" placeholder="请选择评审等级" style="width: 100%">

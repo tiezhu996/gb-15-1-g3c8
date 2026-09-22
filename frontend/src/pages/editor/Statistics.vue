@@ -61,6 +61,7 @@ const cards = computed(() => {
     { label: '外审中', value: o?.external_review ?? 0 },
     { label: '已录用', value: o?.accepted ?? 0 },
     { label: '已拒稿', value: o?.rejected ?? 0 },
+    { label: '已撤稿（不计入总量）', value: o?.withdrawn ?? 0 },
     { label: '录用率', value: o ? `${o.acceptance_rate.toFixed(1)}%` : '0%' },
     { label: '平均审稿周期(天)', value: o ? o.avg_review_days.toFixed(1) : '0' },
     { label: '修改中', value: o?.revision ?? 0 }

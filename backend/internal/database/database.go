@@ -42,6 +42,7 @@ func Migrate(db *gorm.DB) error {
 		&model.Review{},
 		&model.Revision{},
 		&model.PlagiarismCheck{},
+		&model.Withdrawal{},
 		&model.AuditLog{},
 	); err != nil {
 		return fmt.Errorf("auto migrate: %w", err)
@@ -107,17 +108,17 @@ func Seed(db *gorm.DB) error {
 		}
 		for _, s := range samples {
 			paper := model.Paper{
-				Title:        s.title,
-				Abstract:     s.abs,
-				Keywords:     s.kw,
-				Subject:      s.subject,
-				AuthorsMeta:  s.authors,
-				Status:       "accepted",
-				Version:      3,
-				SubmitterID:  author.ID,
-				FileName:     s.title + ".pdf",
-				FileKey:      "demo/" + s.title + ".pdf",
-				Similarity:   9.5,
+				Title:         s.title,
+				Abstract:      s.abs,
+				Keywords:      s.kw,
+				Subject:       s.subject,
+				AuthorsMeta:   s.authors,
+				Status:        "accepted",
+				Version:       3,
+				SubmitterID:   author.ID,
+				FileName:      s.title + ".pdf",
+				FileKey:       "demo/" + s.title + ".pdf",
+				Similarity:    9.5,
 				FinalDecision: "accepted",
 			}
 			if err := db.WithContext(ctx).Create(&paper).Error; err != nil {

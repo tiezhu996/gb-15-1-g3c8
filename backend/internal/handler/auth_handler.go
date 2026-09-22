@@ -96,10 +96,11 @@ func httpStatusForCode(code int) int {
 	case constants.ErrPermissionDenied, constants.ErrRoleNotAllowed:
 		return http.StatusForbidden
 	case constants.ErrUserNotFound, constants.ErrPaperNotFound, constants.ErrReviewNotFound,
-		constants.ErrRevisionNotFound, constants.ErrPlagiarismNotFound, constants.ErrAuditNotFound:
+		constants.ErrRevisionNotFound, constants.ErrPlagiarismNotFound, constants.ErrAuditNotFound,
+		constants.ErrWithdrawalNotFound:
 		return http.StatusNotFound
 	case constants.ErrUserExists, constants.ErrPaperTitleExists, constants.ErrPaperStatusNotAllowed,
-		constants.ErrReviewNotAllowed:
+		constants.ErrReviewNotAllowed, constants.ErrWithdrawalExists:
 		return http.StatusConflict
 	case constants.ErrSubjectNotAllowed:
 		return http.StatusUnprocessableEntity

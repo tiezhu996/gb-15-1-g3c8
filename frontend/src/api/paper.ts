@@ -56,3 +56,6 @@ export function rerunPlagiarism(paperId: number | string) {
 export function listReviewers() {
   return request.get('/users/reviewers') as Promise<Array<{ id: number; real_name: string; username: string }>>
 }
+
+// 撤稿申请相关接口（实现见 api/withdrawal，此处再导出以保持论文模块聚合引用）
+export { applyWithdrawal, getPaperWithdrawal, listWithdrawals, decideWithdrawal } from './withdrawal'

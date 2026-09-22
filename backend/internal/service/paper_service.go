@@ -99,10 +99,13 @@ func (s *PaperService) Detail(ctx context.Context, id uint) (*model.Paper, error
 	return p, nil
 }
 
-// Update 更新论文元信息（仅 submitted/revision 状态允许）。
+// Update 更新论文元信息（仅 submitted/revision 状态允许；撤稿冻结期与已撤稿终态禁止）。
 func (s *PaperService) Update(ctx context.Context, id uint, req dto.UpdatePaperRequest) (*model.Paper, error) {
 	paper, err := s.Detail(ctx, id)
 	if err != nil {
+		return nil, err
+	}
+	if err := EnsureFlowAllowed(paper, "更新论文"); err != nil {
 		return nil, err
 	}
 	if paper.Status != constants.PaperStatusSubmitted && paper.Status != constants.PaperStatusRevision {
@@ -138,6 +141,9 @@ func (s *PaperService) InitialReview(ctx context.Context, editorID uint, paperID
 	err := s.store.Transaction(ctx, func(tx repository.Store) error {
 		paper, err := tx.PaperRepository().FindByIDForUpdate(ctx, paperID)
 		if err != nil {
+			return err
+		}
+		if err := GuardPaperFlow(ctx, tx, paper, "初审"); err != nil {
 			return err
 		}
 		if paper.Status != constants.PaperStatusSubmitted {
@@ -207,6 +213,9 @@ func (s *PaperService) FinalDecision(ctx context.Context, editorID uint, paperID
 		if err != nil {
 			return err
 		}
+		if err := GuardPaperFlow(ctx, tx, paper, "终审"); err != nil {
+			return err
+		}
 		if paper.Status != constants.PaperStatusRevision &&
 			paper.Status != constants.PaperStatusExternalReview &&
 			paper.Status != constants.PaperStatusInitialReview {
@@ -238,6 +247,9 @@ func (s *PaperService) Revise(ctx context.Context, authorID uint, paperID uint, 
 	err := s.store.Transaction(ctx, func(tx repository.Store) error {
 		paper, err := tx.PaperRepository().FindByIDForUpdate(ctx, paperID)
 		if err != nil {
+			return err
+		}
+		if err := GuardPaperFlow(ctx, tx, paper, "修稿"); err != nil {
 			return err
 		}
 		if paper.Status != constants.PaperStatusRevision {

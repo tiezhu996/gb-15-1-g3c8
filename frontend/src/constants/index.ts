@@ -12,7 +12,17 @@ export const PAPER_STATUS_MAP: Record<string, string> = {
   external_review: '外审中',
   revision: '修改中',
   accepted: '已录用',
-  rejected: '已拒稿'
+  rejected: '已拒稿',
+  withdrawn: '已撤稿'
+}
+
+// 撤稿冻结期：存在待处理撤稿申请时流程暂停（论文本身状态不变）。
+export const WITHDRAWAL_PENDING = 'pending'
+
+export const WITHDRAWAL_STATUS_MAP: Record<string, string> = {
+  pending: '待处理',
+  approved: '已批准',
+  rejected: '已驳回'
 }
 
 export const PAPER_STATUS_ORDER = [
@@ -27,7 +37,8 @@ export const REVIEW_STATUS_MAP: Record<string, string> = {
   invited: '待接受',
   accepted: '审稿中',
   declined: '已婉拒',
-  completed: '已完成'
+  completed: '已完成',
+  closed: '已关闭'
 }
 
 export const REVIEW_DECISION_MAP: Record<string, string> = {

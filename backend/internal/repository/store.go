@@ -14,6 +14,7 @@ type Store interface {
 	ReviewRepository() ReviewRepository
 	RevisionRepository() RevisionRepository
 	PlagiarismRepository() PlagiarismRepository
+	WithdrawalRepository() WithdrawalRepository
 	AuditLogRepository() AuditLogRepository
 }
 
@@ -24,6 +25,7 @@ type store struct {
 	reviewRepo     ReviewRepository
 	revisionRepo   RevisionRepository
 	plagiarismRepo PlagiarismRepository
+	withdrawalRepo WithdrawalRepository
 	auditRepo      AuditLogRepository
 }
 
@@ -40,6 +42,7 @@ func newStore(db *gorm.DB) *store {
 		reviewRepo:     NewReviewRepository(db),
 		revisionRepo:   NewRevisionRepository(db),
 		plagiarismRepo: NewPlagiarismRepository(db),
+		withdrawalRepo: NewWithdrawalRepository(db),
 		auditRepo:      NewAuditLogRepository(db),
 	}
 }
@@ -59,6 +62,9 @@ func (s *store) RevisionRepository() RevisionRepository {
 }
 func (s *store) PlagiarismRepository() PlagiarismRepository {
 	return s.plagiarismRepo
+}
+func (s *store) WithdrawalRepository() WithdrawalRepository {
+	return s.withdrawalRepo
 }
 func (s *store) AuditLogRepository() AuditLogRepository {
 	return s.auditRepo

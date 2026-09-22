@@ -16,9 +16,9 @@ import (
 
 // PaperHandler 论文处理器。
 type PaperHandler struct {
-	paperSvc  *service.PaperService
-	auditSvc  *service.AuditLogService
-	logger    *slog.Logger
+	paperSvc *service.PaperService
+	auditSvc *service.AuditLogService
+	logger   *slog.Logger
 }
 
 // NewPaperHandler 构造论文处理器。

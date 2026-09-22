@@ -67,6 +67,7 @@ func main() {
 	revisionSvc := service.NewRevisionService(store, logger)
 	auditSvc := service.NewAuditLogService(store, logger)
 	statSvc := service.NewStatisticsService(store, logger)
+	withdrawalSvc := service.NewWithdrawalService(store, logger)
 
 	authMw := middleware.NewAuth(store.UserRepository(), cfg.JWTSecret, logger)
 	auditMw := middleware.NewAudit(auditSvc, logger)
@@ -79,6 +80,7 @@ func main() {
 		Review:     handler.NewReviewHandler(reviewSvc, logger),
 		Revision:   handler.NewRevisionHandler(revisionSvc, logger),
 		Plagiarism: handler.NewPlagiarismHandler(plagiarismSvc, auditSvc, logger),
+		Withdrawal: handler.NewWithdrawalHandler(withdrawalSvc, paperSvc, auditSvc, logger),
 		Audit:      handler.NewAuditHandler(auditSvc, logger),
 		Statistics: handler.NewStatisticsHandler(statSvc, logger),
 		File:       handler.NewFileHandler(storage, auditSvc, logger),
@@ -113,4 +115,3 @@ func main() {
 		logger.Error("graceful shutdown failed", "error", err)
 	}
 }
-

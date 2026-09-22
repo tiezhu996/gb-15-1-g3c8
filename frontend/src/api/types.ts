@@ -28,12 +28,30 @@ export interface Paper {
   updated_at: string
   reviews?: ReviewItem[]
   revisions?: RevisionItem[]
+  withdrawal?: WithdrawalItem | null
+}
+
+export interface WithdrawalItem {
+  id: number
+  paper_id: number
+  paper?: Paper
+  applicant_id: number
+  applicant?: UserSummary
+  reason: string
+  alternative_note: string
+  status: 'pending' | 'approved' | 'rejected' | string
+  decision_comment: string
+  processed_by_id?: number
+  processed_by?: UserSummary
+  processed_at?: string
+  created_at: string
+  updated_at: string
 }
 
 export interface ReviewItem {
   id: number
   paper_id: number
-  paper?: { id: number; title: string; subject: string }
+  paper?: { id: number; title: string; subject: string; status?: string; withdrawal?: WithdrawalItem | null }
   reviewer_id: number
   reviewer?: UserSummary
   status: string

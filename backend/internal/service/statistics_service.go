@@ -48,9 +48,19 @@ func (s *StatisticsService) Overview(ctx context.Context) (*dto.OverviewResponse
 			o.Accepted = v
 		case constants.PaperStatusRejected:
 			o.Rejected = v
+		case constants.PaperStatusWithdrawn:
+			// 已撤稿单独展示，不计入有效投稿总量（CountByStatus 已排除，理论上不会出现）。
+			o.Withdrawn = v
+			continue
 		}
 		o.Total += v
 	}
+	// 已撤稿从论文库与统计排除：单独查询用于展示，不参与总量与录用率。
+	withdrawnCount, err := s.store.PaperRepository().CountWithdrawn(ctx)
+	if err != nil {
+		return nil, util.NewAppError(constants.ErrInternal, "统计失败：获取已撤稿数量时系统内部错误", err)
+	}
+	o.Withdrawn = withdrawnCount
 	if o.Total > 0 {
 		o.AcceptanceRate = float64(o.Accepted) / float64(o.Total) * 100
 	}

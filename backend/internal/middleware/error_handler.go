@@ -52,4 +52,3 @@ func httpStatusForAppError(code int) int {
 		return http.StatusBadRequest
 	}
 }
-

@@ -80,7 +80,7 @@ func (r *reviewRepository) ListByReviewer(ctx context.Context, reviewerID uint, 
 		return nil, 0, fmt.Errorf("count reviews: %w", err)
 	}
 	var items []model.Review
-	if err := q.Preload("Paper").Preload("Reviewer").
+	if err := q.Preload("Paper").Preload("Paper.Withdrawal").Preload("Reviewer").
 		Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&items).Error; err != nil {
 		return nil, 0, fmt.Errorf("list reviews: %w", err)
 	}
@@ -110,9 +110,11 @@ func (r *reviewRepository) FindInviteByPaperReviewer(ctx context.Context, paperI
 func (r *reviewRepository) CountCompletedByReviewer(ctx context.Context) ([]model.ReviewerLoad, error) {
 	var rows []model.ReviewerLoad
 	completed := constants.ReviewStatusCompleted
+	// 撤稿批准被系统关闭的审稿任务不计入审稿人工作量。
 	if err := r.db.WithContext(ctx).Model(&model.Review{}).
 		Select("reviewer_id, u.real_name as reviewer_name, count(*) as total, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as completed", completed).
 		Joins("JOIN users u ON u.id = reviews.reviewer_id").
+		Where("reviews.status <> ?", constants.ReviewStatusClosed).
 		Group("reviewer_id, u.real_name").Order("total DESC").Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("count completed reviews by reviewer: %w", err)
 	}

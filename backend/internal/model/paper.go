@@ -24,6 +24,8 @@ type Paper struct {
 	UpdatedAt            time.Time  `json:"updated_at"`
 	Reviews              []Review   `gorm:"foreignKey:PaperID" json:"reviews,omitempty"`
 	Revisions            []Revision `gorm:"foreignKey:PaperID" json:"revisions,omitempty"`
+	// Withdrawal 最近一次撤稿申请（用于列表/详情展示撤稿原因、处理结果与状态）。
+	Withdrawal *Withdrawal `gorm:"foreignKey:PaperID" json:"withdrawal,omitempty"`
 }
 
 // PaperFilter 论文查询过滤条件。
