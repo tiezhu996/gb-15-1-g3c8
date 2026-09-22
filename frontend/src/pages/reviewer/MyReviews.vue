@@ -57,7 +57,7 @@
       v-model:page-size="pagination.size.value"
       :total="pagination.total.value"
       layout="total, prev, pager, next"
-      @current-change="() => pagination.load({ status: status.value })"
+      @current-change="() => pagination.load({ status: status })"
       class="pager"
     />
   </el-card>

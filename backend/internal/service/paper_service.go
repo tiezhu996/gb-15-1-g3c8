@@ -110,6 +110,9 @@ func (s *PaperService) Update(ctx context.Context, id uint, req dto.UpdatePaperR
 			fmt.Sprintf("更新论文失败：论文 %s 当前状态 %s 不允许修改元信息",
 				paper.Title, util.FormatPaperStatus(paper.Status)), nil)
 	}
+	if err := ensureNoPendingWithdrawal(ctx, s.store, id); err != nil {
+		return nil, err
+	}
 	if req.Title != "" {
 		paper.Title = req.Title
 	}
@@ -144,6 +147,9 @@ func (s *PaperService) InitialReview(ctx context.Context, editorID uint, paperID
 			return util.NewAppError(constants.ErrPaperStatusNotAllowed,
 				fmt.Sprintf("初审失败：论文 %s 当前状态 %s 不允许初审",
 					paper.Title, util.FormatPaperStatus(paper.Status)), nil)
+		}
+		if err := ensureNoPendingWithdrawal(ctx, tx, paperID); err != nil {
+			return err
 		}
 		if !req.Pass {
 			paper.Status = constants.PaperStatusRejected
@@ -214,6 +220,9 @@ func (s *PaperService) FinalDecision(ctx context.Context, editorID uint, paperID
 				fmt.Sprintf("终审失败：论文 %s 当前状态 %s 不允许终审",
 					paper.Title, util.FormatPaperStatus(paper.Status)), nil)
 		}
+		if err := ensureNoPendingWithdrawal(ctx, tx, paperID); err != nil {
+			return err
+		}
 		paper.Status = req.Decision
 		paper.FinalDecision = req.Decision
 		paper.FinalComment = req.Comment
@@ -244,6 +253,9 @@ func (s *PaperService) Revise(ctx context.Context, authorID uint, paperID uint, 
 			return util.NewAppError(constants.ErrPaperStatusNotAllowed,
 				fmt.Sprintf("修稿失败：论文 %s 当前状态 %s 不允许修稿",
 					paper.Title, util.FormatPaperStatus(paper.Status)), nil)
+		}
+		if err := ensureNoPendingWithdrawal(ctx, tx, paperID); err != nil {
+			return err
 		}
 		version := paper.Version + 1
 		revision := &model.Revision{

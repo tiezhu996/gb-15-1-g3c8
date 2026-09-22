@@ -14,7 +14,7 @@ type SubmitReviewRequest struct {
 
 // ReviewQuery 审稿列表查询参数。
 type ReviewQuery struct {
-	Status string `form:"status" binding:"omitempty,oneof=invited accepted declined completed"`
+	Status string `form:"status" binding:"omitempty,oneof=invited accepted declined completed closed"`
 	Page   int    `form:"page" binding:"omitempty,min=1"`
 	Size   int    `form:"size" binding:"omitempty,min=1,max=100"`
 }

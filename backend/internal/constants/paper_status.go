@@ -1,6 +1,6 @@
 package constants
 
-// 论文状态机枚举：已提交→初审中→外审中→修改中→已录用/已拒稿。
+// 论文状态机枚举：已提交→初审中→外审中→修改中→已录用/已拒稿/已撤稿。
 const (
 	PaperStatusSubmitted      = "submitted"
 	PaperStatusInitialReview  = "initial_review"
@@ -8,6 +8,7 @@ const (
 	PaperStatusRevision       = "revision"
 	PaperStatusAccepted       = "accepted"
 	PaperStatusRejected       = "rejected"
+	PaperStatusWithdrawn      = "withdrawn"
 )
 
 // PaperStatusList 全部论文状态。
@@ -18,4 +19,5 @@ var PaperStatusList = []string{
 	PaperStatusRevision,
 	PaperStatusAccepted,
 	PaperStatusRejected,
+	PaperStatusWithdrawn,
 }

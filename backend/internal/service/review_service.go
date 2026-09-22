@@ -50,6 +50,9 @@ func (s *ReviewService) Assign(ctx context.Context, paperID, reviewerID uint) (*
 		if _, err := tx.PaperRepository().FindByIDForUpdate(ctx, paperID); err != nil {
 			return err
 		}
+		if err := ensureNoPendingWithdrawal(ctx, tx, paperID); err != nil {
+			return err
+		}
 		reviewer, err := tx.UserRepository().FindByID(ctx, reviewerID)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
@@ -103,6 +106,9 @@ func (s *ReviewService) Respond(ctx context.Context, reviewID, reviewerID uint, 
 			return util.NewAppError(constants.ErrPermissionDenied,
 				fmt.Sprintf("审稿回应失败：审稿 id=%d 不属于当前审稿人 id=%d", reviewID, reviewerID), nil)
 		}
+		if err := ensureNoPendingWithdrawal(ctx, tx, review.PaperID); err != nil {
+			return err
+		}
 		if review.Status != constants.ReviewStatusInvited {
 			return util.NewAppError(constants.ErrReviewNotAllowed,
 				fmt.Sprintf("审稿回应失败：审稿 id=%d 当前状态 %s 不可回应",
@@ -151,6 +157,9 @@ func (s *ReviewService) Submit(ctx context.Context, reviewID, reviewerID uint, r
 		if review.ReviewerID != reviewerID {
 			return util.NewAppError(constants.ErrPermissionDenied,
 				fmt.Sprintf("提交审稿失败：审稿 id=%d 不属于当前审稿人 id=%d", reviewID, reviewerID), nil)
+		}
+		if err := ensureNoPendingWithdrawal(ctx, tx, review.PaperID); err != nil {
+			return err
 		}
 		if review.Status != constants.ReviewStatusAccepted {
 			return util.NewAppError(constants.ErrReviewNotAllowed,

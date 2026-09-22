@@ -13,6 +13,7 @@ const (
 	MsgInvalidCredential = "用户名或密码错误"
 	MsgPaperNotFound = "论文不存在"
 	MsgReviewNotFound = "审稿任务不存在"
+	MsgWithdrawalNotFound = "撤稿申请不存在"
 	MsgFileTooLarge  = "文件大小超过限制（50MB）"
 	MsgFileTypeNotAllowed = "仅支持 PDF / Word 格式文件"
 	MsgRateLimited   = "请求过于频繁，请稍后再试"

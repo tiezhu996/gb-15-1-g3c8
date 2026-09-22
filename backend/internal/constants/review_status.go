@@ -6,6 +6,7 @@ const (
 	ReviewStatusAccepted  = "accepted"
 	ReviewStatusDeclined  = "declined"
 	ReviewStatusCompleted = "completed"
+	ReviewStatusClosed    = "closed"
 )
 
 // ReviewStatusList 全部审稿状态。
@@ -14,4 +15,5 @@ var ReviewStatusList = []string{
 	ReviewStatusAccepted,
 	ReviewStatusDeclined,
 	ReviewStatusCompleted,
+	ReviewStatusClosed,
 }

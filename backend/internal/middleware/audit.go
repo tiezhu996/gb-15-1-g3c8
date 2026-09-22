@@ -50,6 +50,8 @@ func parseEntity(path string) string {
 		return "review"
 	case strings.HasPrefix(seg, "revision"):
 		return "revision"
+	case strings.HasPrefix(seg, "withdrawal"):
+		return "withdrawal"
 	case strings.HasPrefix(seg, "user"):
 		return "user"
 	case strings.HasPrefix(seg, "audit"):

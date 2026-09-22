@@ -6,9 +6,42 @@
       </template>
     </el-page-header>
     <template v-if="paper">
+      <el-alert
+        v-if="hasPendingWithdrawal"
+        title="该论文存在待处理撤稿申请：审稿、修稿与查重流程已暂停，请先在「撤稿申请」中处理"
+        type="warning"
+        :closable="false"
+        class="mt-16"
+      />
       <div class="mt-16">
         <PaperInfoCard :paper="paper" />
       </div>
+
+      <el-card v-if="withdrawals.length" shadow="never" class="mt-16">
+        <template #header>
+          <div class="row-between">
+            <span>撤稿申请</span>
+            <el-button type="primary" plain size="small" @click="router.push('/editor/withdrawals')">
+              前往审批
+            </el-button>
+          </div>
+        </template>
+        <el-table :data="withdrawals" size="small" border>
+          <el-table-column prop="reason" label="撤稿原因" min-width="180" show-overflow-tooltip />
+          <el-table-column label="替代处理说明" min-width="150" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.alt_handling_note || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="状态" width="90">
+            <template #default="{ row }"><StatusBadge :status="row.status" kind="withdrawal" /></template>
+          </el-table-column>
+          <el-table-column label="处理结果" min-width="150" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.process_result || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="申请时间" width="150">
+            <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+          </el-table-column>
+        </el-table>
+      </el-card>
 
       <el-card shadow="never" class="mt-16">
         <template #header>
@@ -18,6 +51,7 @@
               v-if="['initial_review', 'external_review', 'revision'].includes(paper.status)"
               type="primary"
               size="small"
+              :disabled="hasPendingWithdrawal"
               @click="assignVisible = true"
             >
               追加审稿人
@@ -59,7 +93,14 @@
           </el-descriptions-item>
           <el-descriptions-item label="检测时间">{{ formatTime(plagiarism.checked_at) }}</el-descriptions-item>
         </el-descriptions>
-        <el-button class="mt-16" type="primary" plain size="small" @click="rerunPlagiarism">
+        <el-button
+          class="mt-16"
+          type="primary"
+          plain
+          size="small"
+          :disabled="hasPendingWithdrawal || paper.status === 'withdrawn'"
+          @click="rerunPlagiarism"
+        >
           重跑查重
         </el-button>
       </el-card>
@@ -79,7 +120,7 @@
           <el-form-item>
             <el-button
               type="primary"
-              :disabled="!['initial_review', 'external_review', 'revision'].includes(paper.status)"
+              :disabled="!['initial_review', 'external_review', 'revision'].includes(paper.status) || hasPendingWithdrawal"
               :loading="decisionLoading"
               @click="submitDecision"
             >
@@ -103,12 +144,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { assignReviewer } from '../../api/review'
 import { finalDecision, getPaper, getPlagiarism, listReviewers, rerunPlagiarism as rerunApi } from '../../api/paper'
-import type { Paper, PlagiarismResult } from '../../api/types'
+import { listPaperWithdrawals } from '../../api/withdrawal'
+import type { Paper, PlagiarismResult, WithdrawalItem } from '../../api/types'
 import EmptyState from '../../components/EmptyState.vue'
 import PaperInfoCard from '../../components/PaperInfoCard.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
@@ -122,10 +164,13 @@ const assignLoading = ref(false)
 const assignVisible = ref(false)
 const paper = ref<Paper | null>(null)
 const plagiarism = ref<PlagiarismResult | null>(null)
+const withdrawals = ref<WithdrawalItem[]>([])
 const reviewers = ref<Array<{ id: number; real_name: string; username: string }>>([])
 const decision = ref('accepted')
 const comment = ref('')
 const assignReviewerId = ref(0)
+
+const hasPendingWithdrawal = computed(() => withdrawals.value.some((w) => w.status === 'pending'))
 
 async function load() {
   const id = route.params.id as string
@@ -133,6 +178,7 @@ async function load() {
   try {
     paper.value = await getPaper(id)
     plagiarism.value = await getPlagiarism(id)
+    withdrawals.value = await listPaperWithdrawals(id)
   } catch {
     // 拦截器已提示
   } finally {

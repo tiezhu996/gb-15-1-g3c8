@@ -8,6 +8,7 @@ type Handlers struct {
 	Review     *ReviewHandler
 	Revision   *RevisionHandler
 	Plagiarism *PlagiarismHandler
+	Withdrawal *WithdrawalHandler
 	Audit      *AuditHandler
 	Statistics *StatisticsHandler
 	File       *FileHandler

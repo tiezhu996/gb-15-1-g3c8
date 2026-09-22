@@ -4,6 +4,7 @@ import {
   REVIEW_DECISION_MAP,
   ROLE_MAP,
   PLAGIARISM_STATUS_MAP,
+  WITHDRAWAL_STATUS_MAP,
   SUBJECT_MAP
 } from '../constants'
 
@@ -30,6 +31,10 @@ export function roleText(r: string): string {
 
 export function plagiarismStatusText(s: string): string {
   return PLAGIARISM_STATUS_MAP[s] || s
+}
+
+export function withdrawalStatusText(s: string): string {
+  return WITHDRAWAL_STATUS_MAP[s] || s
 }
 
 export function subjectText(s: string): string {

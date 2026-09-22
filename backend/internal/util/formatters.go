@@ -31,6 +31,8 @@ func FormatPaperStatus(status string) string {
 		return "已录用"
 	case constants.PaperStatusRejected:
 		return "已拒稿"
+	case constants.PaperStatusWithdrawn:
+		return "已撤稿"
 	default:
 		return status
 	}
@@ -47,6 +49,8 @@ func FormatReviewStatus(status string) string {
 		return "已婉拒"
 	case constants.ReviewStatusCompleted:
 		return "已完成"
+	case constants.ReviewStatusClosed:
+		return "已关闭"
 	default:
 		return status
 	}
@@ -84,6 +88,20 @@ func FormatRole(role string) string {
 	}
 }
 
+// FormatWithdrawalStatus 撤稿申请状态中文文本。
+func FormatWithdrawalStatus(status string) string {
+	switch status {
+	case constants.WithdrawalStatusPending:
+		return "待处理"
+	case constants.WithdrawalStatusApproved:
+		return "已批准"
+	case constants.WithdrawalStatusRejected:
+		return "已驳回"
+	default:
+		return status
+	}
+}
+
 // FormatPlagiarismStatus 查重状态中文文本。
 func FormatPlagiarismStatus(status string) string {
 	switch status {
@@ -116,6 +134,8 @@ func FormatEntityName(entity string) string {
 		return "用户"
 	case "plagiarism":
 		return "查重"
+	case "withdrawal":
+		return "撤稿"
 	case "audit":
 		return "审计"
 	default:

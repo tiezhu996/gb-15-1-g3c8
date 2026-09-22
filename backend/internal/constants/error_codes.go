@@ -29,6 +29,9 @@ const (
 	ErrRevisionNotFound    = 40406
 	ErrPlagiarismNotFound  = 40404
 	ErrAuditNotFound       = 40405
+	ErrWithdrawalNotFound  = 40407
+	ErrWithdrawalNotAllowed = 40905
+	ErrWithdrawalPending   = 40906
 	ErrFileUploadFailed    = 50001
 	ErrStorageUnavailable  = 50002
 	ErrSubjectNotAllowed   = 42201

@@ -34,4 +34,8 @@ const (
 	LogRequestDone         = "request done: method=%s path=%s status=%d latency_ms=%d"
 	LogProfileUpdate       = "user profile updated: user_id=%d"
 	LogPlagiarismGet       = "plagiarism result fetched: paper_id=%d"
+	LogWithdrawalApply     = "withdrawal apply: withdrawal_id=%d paper_id=%d applicant_id=%d"
+	LogWithdrawalApprove   = "withdrawal approved: withdrawal_id=%d paper_id=%d closed_reviews=%d"
+	LogWithdrawalReject    = "withdrawal rejected: withdrawal_id=%d paper_id=%d"
+	LogWithdrawalList      = "withdrawal list fetched: status=%s page=%d"
 )

@@ -9,10 +9,11 @@ import {
   REVIEW_STATUS_MAP,
   REVIEW_DECISION_MAP,
   ROLE_MAP,
-  PLAGIARISM_STATUS_MAP
+  PLAGIARISM_STATUS_MAP,
+  WITHDRAWAL_STATUS_MAP
 } from '../constants'
 
-const props = defineProps<{ status: string; kind?: 'paper' | 'review' | 'decision' | 'role' | 'plagiarism' }>()
+const props = defineProps<{ status: string; kind?: 'paper' | 'review' | 'decision' | 'role' | 'plagiarism' | 'withdrawal' }>()
 
 const map = computed(() => {
   switch (props.kind || 'paper') {
@@ -24,6 +25,8 @@ const map = computed(() => {
       return ROLE_MAP
     case 'plagiarism':
       return PLAGIARISM_STATUS_MAP
+    case 'withdrawal':
+      return WITHDRAWAL_STATUS_MAP
     default:
       return PAPER_STATUS_MAP
   }
@@ -37,6 +40,11 @@ const tagType = computed(() => {
     if (props.status === 'reject') return 'danger'
     return 'warning'
   }
+  if (props.kind === 'withdrawal') {
+    if (props.status === 'approved') return 'success'
+    if (props.status === 'rejected') return 'danger'
+    return 'warning'
+  }
   switch (props.status) {
     case 'accepted':
     case 'completed':
@@ -48,6 +56,8 @@ const tagType = computed(() => {
     case 'submitted':
     case 'invited':
     case 'pending':
+    case 'withdrawn':
+    case 'closed':
       return 'info'
     default:
       return 'warning'

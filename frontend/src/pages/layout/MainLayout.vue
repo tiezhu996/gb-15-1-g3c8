@@ -46,6 +46,7 @@ const allMenus = [
   { path: '/papers', title: '我的投稿', icon: 'Document', roles: ['author', 'admin'] },
   { path: '/papers/create', title: '新建投稿', icon: 'EditPen', roles: ['author', 'admin'] },
   { path: '/editor/initial-review', title: '编辑部初审', icon: 'Checked', roles: ['editor', 'admin'] },
+  { path: '/editor/withdrawals', title: '撤稿申请', icon: 'Remove', roles: ['editor', 'admin'] },
   { path: '/editor/statistics', title: '数据统计', icon: 'DataAnalysis', roles: ['editor', 'admin'] },
   { path: '/reviews', title: '我的审稿', icon: 'Tickets', roles: ['reviewer', 'admin'] },
   { path: '/library', title: '论文库', icon: 'Collection', roles: ['author', 'reviewer', 'editor', 'admin'] },

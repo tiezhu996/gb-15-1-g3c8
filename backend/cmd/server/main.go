@@ -65,6 +65,7 @@ func main() {
 	paperSvc := service.NewPaperService(store, plagiarismSvc, cfg, logger)
 	reviewSvc := service.NewReviewService(store, logger)
 	revisionSvc := service.NewRevisionService(store, logger)
+	withdrawalSvc := service.NewWithdrawalService(store, logger)
 	auditSvc := service.NewAuditLogService(store, logger)
 	statSvc := service.NewStatisticsService(store, logger)
 
@@ -79,6 +80,7 @@ func main() {
 		Review:     handler.NewReviewHandler(reviewSvc, logger),
 		Revision:   handler.NewRevisionHandler(revisionSvc, logger),
 		Plagiarism: handler.NewPlagiarismHandler(plagiarismSvc, auditSvc, logger),
+		Withdrawal: handler.NewWithdrawalHandler(withdrawalSvc, auditSvc, logger),
 		Audit:      handler.NewAuditHandler(auditSvc, logger),
 		Statistics: handler.NewStatisticsHandler(statSvc, logger),
 		File:       handler.NewFileHandler(storage, auditSvc, logger),

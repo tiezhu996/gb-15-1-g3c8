@@ -42,9 +42,15 @@ func Migrate(db *gorm.DB) error {
 		&model.Review{},
 		&model.Revision{},
 		&model.PlagiarismCheck{},
+		&model.WithdrawalRequest{},
 		&model.AuditLog{},
 	); err != nil {
 		return fmt.Errorf("auto migrate: %w", err)
+	}
+	// 部分唯一索引：同一论文仅允许一条待处理撤稿申请（并发兜底，重复申请只保留一条）。
+	if err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS uk_withdrawal_pending_paper
+		ON withdrawal_requests (paper_id) WHERE status = 'pending'`).Error; err != nil {
+		return fmt.Errorf("create withdrawal pending index: %w", err)
 	}
 	return nil
 }

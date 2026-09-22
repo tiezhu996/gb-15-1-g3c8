@@ -20,6 +20,7 @@ type ReviewRepository interface {
 	ListByReviewer(ctx context.Context, reviewerID uint, status string, page, size int) ([]model.Review, int64, error)
 	ListByPaper(ctx context.Context, paperID uint) ([]model.Review, error)
 	FindInviteByPaperReviewer(ctx context.Context, paperID, reviewerID uint) (*model.Review, error)
+	CloseUnfinishedByPaper(ctx context.Context, paperID uint) (int64, error)
 	CountCompletedByReviewer(ctx context.Context) ([]model.ReviewerLoad, error)
 	CountCompleted(ctx context.Context) (int64, error)
 	AvgDurationDays(ctx context.Context) (float64, error)
@@ -105,6 +106,17 @@ func (r *reviewRepository) FindInviteByPaperReviewer(ctx context.Context, paperI
 		return nil, fmt.Errorf("find invite paper %d reviewer %d: %w", paperID, reviewerID, err)
 	}
 	return &v, nil
+}
+
+// CloseUnfinishedByPaper 关闭论文下全部未完成审稿（撤稿批准时调用），返回关闭条数。
+func (r *reviewRepository) CloseUnfinishedByPaper(ctx context.Context, paperID uint) (int64, error) {
+	res := r.db.WithContext(ctx).Model(&model.Review{}).
+		Where("paper_id = ? AND status IN ?", paperID, []string{constants.ReviewStatusInvited, constants.ReviewStatusAccepted}).
+		Update("status", constants.ReviewStatusClosed)
+	if res.Error != nil {
+		return 0, fmt.Errorf("close unfinished reviews by paper %d: %w", paperID, res.Error)
+	}
+	return res.RowsAffected, nil
 }
 
 func (r *reviewRepository) CountCompletedByReviewer(ctx context.Context) ([]model.ReviewerLoad, error) {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/paperflow/paperflow/internal/constants"
 	"github.com/paperflow/paperflow/internal/model"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -122,6 +123,7 @@ func (r *paperRepository) CountByStatus(ctx context.Context) (map[string]int64, 
 	}
 	var rows []row
 	if err := r.db.WithContext(ctx).Model(&model.Paper{}).
+		Where("status <> ?", constants.PaperStatusWithdrawn).
 		Select("status, count(*) as count").Group("status").Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("count papers by status: %w", err)
 	}
@@ -135,6 +137,7 @@ func (r *paperRepository) CountByStatus(ctx context.Context) (map[string]int64, 
 func (r *paperRepository) CountBySubject(ctx context.Context) ([]model.SubjectCount, error) {
 	var rows []model.SubjectCount
 	if err := r.db.WithContext(ctx).Model(&model.Paper{}).
+		Where("status <> ?", constants.PaperStatusWithdrawn).
 		Select("subject, count(*) as count").Group("subject").Order("count DESC").Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("count papers by subject: %w", err)
 	}
@@ -146,7 +149,7 @@ func (r *paperRepository) CountCreatedByDay(ctx context.Context, days int) ([]mo
 	start := time.Now().AddDate(0, 0, -(days - 1))
 	if err := r.db.WithContext(ctx).Model(&model.Paper{}).
 		Select("to_char(created_at, 'YYYY-MM-DD') as day, count(*) as count").
-		Where("created_at >= ?", start).
+		Where("created_at >= ? AND status <> ?", start, constants.PaperStatusWithdrawn).
 		Group("day").Order("day").Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("count papers by day: %w", err)
 	}

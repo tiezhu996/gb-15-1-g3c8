@@ -66,6 +66,23 @@ export interface PlagiarismResult {
   checked_at: string
 }
 
+export interface WithdrawalItem {
+  id: number
+  paper_id: number
+  paper?: { id: number; title: string; status: string }
+  applicant_id: number
+  applicant?: UserSummary
+  reason: string
+  alt_handling_note: string
+  status: string
+  processed_by_id?: number
+  processed_by?: UserSummary
+  process_result: string
+  processed_at: string
+  created_at: string
+  updated_at: string
+}
+
 export interface PageResult<T> {
   total: number
   page: number

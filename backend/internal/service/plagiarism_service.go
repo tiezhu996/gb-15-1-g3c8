@@ -89,6 +89,9 @@ func (s *PlagiarismService) Rerun(ctx context.Context, paperID uint) (*model.Pla
 		}
 		return nil, util.NewAppError(constants.ErrInternal, "查重重跑失败：系统内部错误", err)
 	}
+	if err := ensureNoPendingWithdrawal(ctx, s.store, paperID); err != nil {
+		return nil, err
+	}
 	return s.RunCheck(ctx, paper)
 }
 
